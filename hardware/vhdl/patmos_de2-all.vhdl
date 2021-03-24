@@ -25,7 +25,7 @@ entity patmos_top is
         oLedsPins_led : out   std_logic_vector(8 downto 0);
         oLedsPins_ledR : out  std_logic_vector(17 downto 0);
         iKeysPins_key : in    std_logic_vector(3 downto 0);
-        oGpioPins_gpio_0 : out std_logic_vector(7 downto 0);
+        oGpioPins_gpio_0 : inout std_logic_vector(7 downto 0);
         oDebug_MII_RX   : out std_logic_vector(5 downto 0);
         oSegmentDisplayPins_hexDisp_7 : out std_logic_vector(6 downto 0);
     oSegmentDisplayPins_hexDisp_6 : out std_logic_vector(6 downto 0);
@@ -93,18 +93,24 @@ entity patmos_top is
         ENET1_MDC     : out   std_logic; -- MII Management data clock (to PHY)
         ENET1_MDIO    : inout std_logic;
 
-        ENET1_RST_N   : out   std_logic
+        ENET1_RST_N   : out   std_logic;
+
+        -- SD Card
+        sdc_clk : out std_logic;
+        sd_cmd : inout std_logic;
+        sd_data : inout std_logic_vector(3 downto 0);
+        sd_write_protect : in std_logic
         );
 end entity patmos_top;
 
 architecture rtl of patmos_top is
     component Patmos is
         port(
-            clk                              : in  std_logic;
+            clock                            : in  std_logic;
             reset                            : in  std_logic;
             io_Leds_led                      : out std_logic_vector(8 downto 0);
             io_Keys_key                      : in  std_logic_vector(3 downto 0);
-            io_Gpio_gpios_0                  : out std_logic_vector(5 downto 0);
+            io_Gpio_gpios_0                  : inout std_logic_vector(5 downto 0);
             io_UartCmp_tx                    : out std_logic;
             io_UartCmp_rx                    : in  std_logic;
             io_Uart_tx                       : out std_logic;
@@ -166,7 +172,15 @@ architecture rtl of patmos_top is
             io_SRamCtrl_ramOut_noe            : out std_logic;
             io_SRamCtrl_ramOut_nwe            : out std_logic;
             io_SRamCtrl_ramOut_nlb            : out std_logic;
-            io_SRamCtrl_ramOut_nub            : out std_logic
+            io_SRamCtrl_ramOut_nub            : out std_logic;
+
+            io_SDCController_sd_dat_dat : in std_logic_vector(3 downto 0);
+            io_SDCController_sd_dat_out : out std_logic_vector(3 downto 0);
+            io_SDCController_sd_dat_oe  : out std_logic;
+            io_SDCController_sd_cmd_dat : in std_logic;
+            io_SDCController_sd_cmd_out : out std_logic;
+            io_SDCController_sd_cmd_oe  : out std_logic;
+            io_SDCController_sd_clk_o_pad : out std_logic
         );
     end component;
 
@@ -198,6 +212,12 @@ architecture rtl of patmos_top is
 
     signal debug_timestamp_int : std_logic;
     signal debug_mii_tx_en_int : std_logic;
+
+    -- sdcard signals for tristate inout
+    signal sd_cmd_oe : std_logic;
+    signal sd_cmd_out : std_logic;
+    signal sd_dat_oe : std_logic;
+    signal sd_dat_out : std_logic_vector(3 downto 0);
 
 begin
     ENET0_MDIO  <= md_pad_o_int when (md_padoe_o_int = '1') else 'Z';
@@ -251,8 +271,12 @@ begin
 
     oDebug_MII_RX <= ENET0_RX_DATA & ENET0_RX_DV & ENET0_RX_CLK;
 
+    -- sdcard tristate
+    sd_cmd <= sd_cmd_out when sd_cmd_oe = '1' else 'Z';
+    sd_data <= sd_dat_out when sd_dat_oe = '1' else (others => 'Z');
+
     patmos_inst : Patmos port map(
-        clk => clk_int, 
+        clock => clk_int, 
         reset => int_res,
         io_Leds_led => oLedsPins_led,
         io_Keys_key => iKeysPins_key,
@@ -315,7 +339,15 @@ begin
         io_SRamCtrl_ramOut_noe => oSRAM_OE_N, 
         io_SRamCtrl_ramOut_nwe => oSRAM_WE_N, 
         io_SRamCtrl_ramOut_nlb => oSRAM_LB_N, 
-        io_SRamCtrl_ramOut_nub => oSRAM_UB_N
+        io_SRamCtrl_ramOut_nub => oSRAM_UB_N,
+
+        io_SDCController_sd_dat_dat => sd_data,
+        io_SDCController_sd_dat_out => sd_dat_out,
+        io_SDCController_sd_dat_oe => sd_dat_oe,
+        io_SDCController_sd_cmd_dat => sd_cmd,
+        io_SDCController_sd_cmd_out => sd_cmd_out,
+        io_SDCController_sd_cmd_oe  => sd_cmd_oe,
+        io_SDCController_sd_clk_o_pad => sdc_clk
     );
 
 end architecture rtl;

@@ -35,26 +35,38 @@ entity patmos_top is
         i2c_scl       : inout std_logic;
         ad0           : out   std_logic;
         -- Actuator and propdrive OUT
-        actuator_out_port  : out   std_logic_vector(3 downto 0);
-        propdrive_out_port  : out   std_logic_vector(3 downto 0)
-    );
+        pwm_measurment_input  : in   std_logic_vector(3 downto 0);
+        propdrive_out_port  : out   std_logic_vector(3 downto 0);
+		  --SPI Master interface
+  		  SPIMaster_miso : in std_logic;
+		  SPIMaster_mosi : out std_logic;
+		  SPIMaster_nSS : out std_logic;
+		  SPIMaster_sclk : out std_logic;
+		  --test
+		  test_SPIMaster_miso : out std_logic;
+		  test_SPIMaster_mosi : out std_logic;
+		  test_SPIMaster_nSS : out std_logic;
+		  test_SPIMaster_sclk : out std_logic
+		  
+
+ );
 end entity patmos_top;
 architecture rtl of patmos_top is
     component Patmos is
         port(
-            clk                     : in  std_logic;
+            clock                   : in  std_logic;
             reset                   : in  std_logic;
             io_Leds_led             : out std_logic_vector(7 downto 0);
-            io_AauMpu_data_0        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_1        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_2        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_3        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_4        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_5        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_6        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_7        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_8        : in  std_logic_vector(31 downto 0);
-            io_AauMpu_data_9        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_0        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_1        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_2        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_3        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_4        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_5        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_6        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_7        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_8        : in  std_logic_vector(31 downto 0);
+--            io_AauMpu_data_9        : in  std_logic_vector(31 downto 0);
             io_I2CInterface_MCmd    : out std_logic_vector(2 downto 0);
             io_I2CInterface_MAddr   : out std_logic_vector(15 downto 0);
             io_I2CInterface_MData   : out std_logic_vector(31 downto 0);
@@ -70,7 +82,11 @@ architecture rtl of patmos_top is
             io_Uart_tx              : out std_logic;
             io_Uart_rx              : in std_logic;
             io_UartCmp_tx           : out std_logic;
-            io_UartCmp_rx           : in  std_logic
+            io_UartCmp_rx           : in  std_logic;
+				io_SPIMaster_miso 		: in std_logic;
+				io_SPIMaster_mosi 		: out std_logic;
+				io_SPIMaster_nSS 			: out std_logic;
+				io_SPIMaster_sclk 		: out std_logic
         );
     end component;
 
@@ -138,7 +154,8 @@ architecture rtl of patmos_top is
     SData      : out std_logic_vector(OCP_DATA_WIDTH - 1 downto 0);
 
     -- Actuator and propdrive OUT
-    actuator_out_port  : out   std_logic_vector(ACTUATOR_NUMBER-1 downto 0);
+--    actuator_out_port  : out   std_logic_vector(ACTUATOR_NUMBER-1 downto 0);
+	 pwm_measurment_input : in std_logic_vector(ACTUATOR_NUMBER-1 downto 0);
     propdrive_out_port  : out   std_logic_vector(PROPDRIVE_NUMBER-1 downto 0)
   );
 end component;
@@ -180,8 +197,14 @@ end component;
       signal actuatorsPins_MByteEn : std_logic_vector(3 downto 0);
       signal actuatorsPins_SResp : std_logic_vector(1 downto 0);
       signal actuatorsPins_SData : std_logic_vector(31 downto 0);
+		
+		signal mosi : std_logic;
+		signal miso : std_logic;
+		signal ss : std_logic;
+		signal sclk : std_logic;
 
     begin
+	
         --  pll_inst : entity work.pll generic map(
         --      input_freq  => pll_infreq,
         --      multiply_by => pll_mult,
@@ -234,35 +257,39 @@ end component;
             );
 
         Patmos_inst_0 : Patmos port map(
-                clk                         => clk_int,
-                reset                       => reset_int,
+                clock                   => clk_int,
+                reset                   => reset_int,
                 io_Leds_led             => oLedsPins_led,
-                io_AauMpu_data_0        => readdata(0),
-                io_AauMpu_data_1        => readdata(1),
-                io_AauMpu_data_2        => readdata(2),
-                io_AauMpu_data_3        => readdata(3),
-                io_AauMpu_data_4        => readdata(4),
-                io_AauMpu_data_5        => readdata(5),
-                io_AauMpu_data_6        => readdata(6),
-                io_AauMpu_data_7        => readdata(7),
-                io_AauMpu_data_8        => readdata(8),
-                io_AauMpu_data_9        => readdata(9),
+--                io_AauMpu_data_0        => readdata(0),
+--                io_AauMpu_data_1        => readdata(1),
+--                io_AauMpu_data_2        => readdata(2),
+--                io_AauMpu_data_3        => readdata(3),
+--                io_AauMpu_data_4        => readdata(4),
+--                io_AauMpu_data_5        => readdata(5),
+--                io_AauMpu_data_6        => readdata(6),
+--                io_AauMpu_data_7        => readdata(7),
+--                io_AauMpu_data_8        => readdata(8),
+--                io_AauMpu_data_9        => readdata(9),
                 io_I2CInterface_MCmd    => i2CInterfacePins_MCmd,
                 io_I2CInterface_MAddr   => i2CInterfacePins_MAddr,
                 io_I2CInterface_MData   => i2CInterfacePins_MData,
                 io_I2CInterface_MByteEn => i2CInterfacePins_MByteEn,
                 io_I2CInterface_SResp   => i2CInterfacePins_SResp,
                 io_I2CInterface_SData   => i2CInterfacePins_SData,     
-           io_Actuators_MCmd => actuatorsPins_MCmd,
-                io_Actuators_MAddr => actuatorsPins_MAddr,
-           io_Actuators_MData => actuatorsPins_MData,
-           io_Actuators_MByteEn => actuatorsPins_MByteEn,
-           io_Actuators_SResp => actuatorsPins_SResp,
-           io_Actuators_SData => actuatorsPins_SData,
-           io_Uart_tx => oUart2Pins_txd,
-           io_Uart_rx => iUart2Pins_rxd,
-                io_UartCmp_tx              => oUartPins_txd,
-                io_UartCmp_rx              => iUartPins_rxd
+                io_Actuators_MCmd 		 => actuatorsPins_MCmd,
+                io_Actuators_MAddr 		 => actuatorsPins_MAddr,
+				    io_Actuators_MData 		 => actuatorsPins_MData,
+				    io_Actuators_MByteEn 	 => actuatorsPins_MByteEn,
+				    io_Actuators_SResp 		 => actuatorsPins_SResp,
+				    io_Actuators_SData 		 => actuatorsPins_SData,
+				    io_Uart_tx 				 => oUart2Pins_txd,
+				    io_Uart_rx 				 => iUart2Pins_rxd,
+                io_UartCmp_tx           => oUartPins_txd,
+                io_UartCmp_rx           => iUartPins_rxd,
+					 io_SPIMaster_miso 		 => miso,
+					 io_SPIMaster_mosi 		 => mosi,
+					 io_SPIMaster_nSS 		 => ss,
+					 io_SPIMaster_sclk 		 => sclk
             );
 
         I2Ccontroller_inst_0 : I2Ccontroller
@@ -304,8 +331,20 @@ end component;
         SResp  => actuatorsPins_SResp,
         SData  => actuatorsPins_SData,
         -- Actuator and propdrive OUT
-        actuator_out_port  => actuator_out_port,
+        pwm_measurment_input  => pwm_measurment_input,
         propdrive_out_port  => propdrive_out_port
       );
-
+		  
+		  
+		  test_SPIMaster_miso <= miso;
+		  test_SPIMaster_mosi<= mosi; 
+		  test_SPIMaster_nSS <= ss;
+		  test_SPIMaster_sclk<= sclk;
+		  
+		  miso <= SPIMaster_miso;
+		  SPIMaster_mosi<= mosi; 
+		  SPIMaster_nSS <= ss;
+		  SPIMaster_sclk<= sclk;
+	
+		  
     end architecture rtl;
